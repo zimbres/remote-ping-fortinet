@@ -7,23 +7,26 @@ from netmiko import ConnectHandler
 env = json.load(open('env.json'))
 
 
-def ping(host, target, source, port):
-    print(f"Pinging {target} from {source} for {host} and {port}" )
+def ping(host, target, source, port, vdom=None):
     device = {
         "device_type": "fortinet",
         "host": f"{host}",
         "port": f"{port}",
         "username": f"{env['USER']}",
-        "password": f"{env['PASSWORD']}",
+        "password": f"{env['PASSWORD']}"
     }
 
     try:
         with ConnectHandler(**device, allow_auto_change=True) as net_connect:
-            pre_command = f'exec ping-options source {source}'
-            net_connect.send_command(pre_command)
-            command = f'execute ping {target}'
+            if vdom is not None:
+                net_connect.send_command('config vdom', expect_string=r"\ \(\w+\)\ [#$]")
+                net_connect.send_command(f'edit {vdom}', expect_string=r"\ \(\w+\)\ [#$]")
+                net_connect.send_command(f'exec ping-options source {source}', expect_string=r"\ \(\w+\)\ [#$]")
+                multi_lines = net_connect.send_command(f'execute ping {target}', read_timeout=60, expect_string=r"\ \(\w+\)\ [#$]")
+            else:
+                net_connect.send_command(f'exec ping-options source {source}')
+                multi_lines = net_connect.send_command(f'execute ping {target}', read_timeout=60)
 
-            multi_lines = ""f'{net_connect.send_command(command)}'""
             lines = multi_lines.splitlines()
             ping_median = []
 
@@ -38,6 +41,7 @@ def ping(host, target, source, port):
             return round(statistics.median(ping_median), 0)
 
     except Exception as e:
+        print(e)
         return "fail"
 
 

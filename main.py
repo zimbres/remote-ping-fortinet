@@ -13,9 +13,9 @@ def health():
 
 
 @app.get("/ping")
-def ping(host, target, source, port = 22):
+def ping(host, target, source, port = 22, vdom = None):
 
-    result = command.ping(host, target, source, port)
+    result = command.ping(host, target, source, port, vdom)
 
     if result != "fail":
         response = {"data": {"health": True, "success": result}}
